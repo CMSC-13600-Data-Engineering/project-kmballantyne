@@ -1,0 +1,19 @@
+>>> tables_list
+['auth_group', 'auth_group_permissions', 'auth_permission', 'auth_user', 'auth_user_groups', 'auth_user_user_permissions', 'django_admin_log', 'django_content_type', 'django_migrations', 'django_session']
+
+Here's the command I used to find the list of tables in the database:
+
+In the virtual environment in attendancechimp, I typed
+$ python manage.py shell
+
+within python, I typed 
+>>> from django.db import connection
+>>> tables_list = connection.introspection.table_names()
+>>> tables_list
+
+the output is the list of tables currently in the database.
+
+Another way to find the tables is by typing 
+$ python manage.py inspectdb
+
+this returns the model definitions of the tables in the database.
