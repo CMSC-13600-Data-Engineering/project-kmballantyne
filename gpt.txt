@@ -1,0 +1,102 @@
+Me:
+Generate a data model, incorporating what data needs to be stored and how it needs to be linked as Django file.
+
+At a high level here are all the entities that you have:
+
+Users (of type either instructor or students)
+Courses (instructors teach these and students take these)
+Lectures (particular days for each course)
+QR Codes (uploads that are associated with lectures and students)
+
+ChatGPT:
+To model the entities described (Users, Courses, Lectures, and QR Codes) and their relationships in Django, 
+we'll create a set of models that define the data structure and the relationships between these entities. 
+Below is an example of how you can set up these models in Django:
+
+from django.db import models
+from django.contrib.auth.models import AbstractUser
+
+# Custom User model to differentiate between instructors and students
+class User(AbstractUser):
+    USER_TYPE_CHOICES = (
+        ('instructor', 'Instructor'),
+        ('student', 'Student'),
+    )
+    user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES)
+
+    def __str__(self):
+        return self.username
+
+# Course model to represent courses taught by instructors
+class Course(models.Model):
+    name = models.CharField(max_length=100)
+    instructor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='courses_taught')
+
+    def __str__(self):
+        return self.name
+
+# Lecture model to represent lectures scheduled for each course
+class Lecture(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lectures')
+    date = models.DateField()
+
+    def __str__(self):
+        return f'{self.course.name} - Lecture on {self.date}'
+
+# QRCode model to represent uploaded QR codes associated with lectures and students
+class QRCode(models.Model):
+    lecture = models.ForeignKey(Lecture, on_delete=models.CASCADE, related_name='qr_codes')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='qr_codes_scanned')
+    qr_image = models.ImageField(upload_to='qrcodes/')
+
+    def __str__(self):
+        return f'QR Code for {self.lecture} - Scanned by {self.student.username}'
+
+In this Django model setup:
+
+User Model:
+Inherits from AbstractUser to provide basic user functionalities.
+Includes a custom field user_type to differentiate between instructors and students.
+The user_type field is a choice field with options for 'instructor' or 'student'.
+
+Course Model:
+Represents a course taught by an instructor.
+Contains a foreign key instructor linking to the User model (instructor).
+
+Lecture Model:
+Represents a lecture scheduled for a specific course on a particular date.
+Contains a foreign key course linking to the Course model.
+
+QRCode Model:
+Represents a QR code uploaded and associated with a specific lecture and student.
+Contains foreign keys lecture and student linking to the Lecture and User models respectively.
+Includes an qr_image field to upload the QR code image.
+
+Usage and Querying Examples:
+1. Creating a new Course:
+instructor = User.objects.get(username='instructor1')
+course = Course.objects.create(name='Introduction to Django', instructor=instructor)
+
+2. Adding a Lecture to a Course:
+course = Course.objects.get(name='Introduction to Django')
+lecture = Lecture.objects.create(course=course, date='2024-04-10')
+
+3. Uploading a QR Code for a Lecture:
+lecture = Lecture.objects.get(course__name='Introduction to Django', date='2024-04-10')
+student = User.objects.get(username='student1')
+qr_code = QRCode.objects.create(lecture=lecture, student=student, qr_image='path_to_image.png')
+
+4. Querying QR Codes Scanned by a Student:
+student = User.objects.get(username='student1')
+qr_codes_scanned = QRCode.objects.filter(student=student)
+
+This Django model setup allows you to manage users (instructors and students), courses, lectures, and QR codes efficiently and 
+query relationships between these entities as needed. Adjust the model fields and relationships based on your specific 
+requirements and application logic.
+
+Me:
+We think that this data model seems a lot more simple and streamlined compared to our unique data model.
+However, we think that ChatGPT lacks the information from the helper functions that we incorporated
+within out unique data model which is more informative overall. We think at its core, ChatGPT's data
+model is a lot more simpler and easier to implement at a higher level compared to ours, but it is less
+informative from a documentation standpoint.
