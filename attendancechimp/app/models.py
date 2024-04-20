@@ -13,14 +13,14 @@ class Person(models.Model):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     
-def create_user(name, email, password, is_instructor):
+def create_ac_user(name, email, password, instructor):
     
     user = User.objects.create_user(name, email, password)
     user.save()
     
-    uni_per = Person(is_instructor=is_instructor, user=user)
+    uni_per = Person(instructor=instructor, user=user)
     uni_per.save()
-    
+    #here
     return user, uni_per
 
 # class StudentUsers(models.Model):
