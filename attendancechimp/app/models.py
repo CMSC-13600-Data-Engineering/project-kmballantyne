@@ -1,124 +1,158 @@
-from distutils.command import upload
-from tkinter import CASCADE
+'''SOLUTIONS. These are solutions that might help you think about
+the problem in a different way. Note the simplicity of the models
+compared to some of what you might have implemented. We'll walk 
+through all of this step-by-step. 
+'''
+
+# import to get the models class  from django
 from django.db import models
+
+# get access to django users
 from django.contrib.auth.models import User
+
+# some stuff to get the QR code working easier
 from django.utils.crypto import get_random_string
 
-# Create your models here.
 
-class Person(models.Model):
-    auto_id = models.AutoField(primary_key=True)
-    
-    instructor = models.BooleanField(null=False)
-    
+class UniversityPerson(models.Model):
+    """This model describes a university person, either a student
+    or an instructor. It contains all of the necessary data that
+    might identify such a person.
+
+    Note: We link this entity to the Django user model so we only
+    need to store information unique to a "UniversityPerson" above
+    and beyond a simple user.
+    """
+
+    # an auto incrementing id
+    auto_increment_id = models.AutoField(primary_key=True)
+
+    # is an instructor or student?
+    is_instructor = models.BooleanField(null=False)
+
+    # relate to django auth user
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    
-def create_user(name, email, password, is_instructor):
-    
+
+# for each model, I like to wrap it in a simple helper function
+# for example for the user model, when creating a user we create
+# two users one university person and one django user.
+def create_ac_user(name, email, password, is_instructor):
+    """Creates an ac user and a corresponding django user"""
+
+    # first create django user
     user = User.objects.create_user(name, email, password)
     user.save()
-    
-    uni_per = Person(is_instructor=is_instructor, user=user)
-    uni_per.save()
-    
-    return user, uni_per
 
-# class StudentUsers(models.Model):
-#    studentID = models.CharField(max_length=256, primary_key=True)
-#    first_name = models.CharField(max_length=256)
-#    last_name = models.CharField(max_length=256)
-   
-# class FacultyUsers(models.Model):
-#     facultyID = models.CharField(max_length=256, primary_key=True)
-#     first_name = models.CharField(max_length=256)
-#     last_name = models.CharField(max_length=256)
+    # then create ac user
+    up = UniversityPerson(is_instructor=is_instructor, user=user)
+    up.save()
+
+    # return both users
+    return user, up
+
 
 class Course(models.Model):
-    
-    auto_id = models.AutoField(primary_key=True)
-    
-    name = models.CharField(max_length=256)
-    
-    faculty = models.ForeignKey(Person, on_delete=models.CASCADE)
-    
-    class_begin = models.TimeField()
+    """A course represents a single course using attendancechimp. A course
+    stores a reference to the instructor as well as the times/days of the
+    week that it meets."""
+
+    # an internal unique id
+    auto_increment_id = models.AutoField(primary_key=True)
+
+    # a course name
+    name = models.CharField(max_length=128)
+
+    # foreign key to instructor
+    instructor = models.ForeignKey(UniversityPerson, on_delete=models.CASCADE)
+
+    # class time start and end
+    class_start = models.TimeField()
     class_end = models.TimeField()
-    
-    mon_class = models.BooleanField(default=False)
-    tues_class = models.BooleanField(default=False)
-    wed_class = models.BooleanField(default=False)
-    thurs_class = models.BooleanField(default=False)
-    fri_class = models.BooleanField(default=False)
-    
-    # number = models.CharField(max_length=5)
-    # students = models.ManyToManyField(Person)
-    
+
+    # class days
+    m_class = models.BooleanField(default=False)
+    tu_class = models.BooleanField(default=False)
+    w_class = models.BooleanField(default=False)
+    th_class = models.BooleanField(default=False)
+    f_class = models.BooleanField(default=False)
+
+
+# let's spec out the basic functionality of a course
 def create_course(name, instructor, days, start, end):
-    
-    course = Course(name=name, instructor=instructor, class_begin=start, class_end=end)
-    
+    """Creates an ac user and a corresponding django user"""
+    course = Course(name=name, instructor=instructor, class_start=start, class_end=end)
+
+    # handles course meetings
     for d in days:
         if d == "M":
-            course.mon_class = True
-        if d == "Tu":
-            course.tues_class = True
-        if d == "W":
-            course.wed_class = True
-        if d == "Th":
-            course.thurs_class = True
-        if d == "F":
-            course.fri_class = True
-            
-    course.save()
-    
-    return course
-    
-class Lecture(models.Model):
-    date = models.DateField()
-    courses = models.ForeignKey(Course, on_delete=models.CASCADE)
+            course.m_class = True
 
-# class HelperCourseStudent(models.Model):
-#     course = models.ForeignKey(Course, on_delete=models.CASCADE)
-#     student = models.ForeignKey(StudentUsers, on_delete=models.CASCADE)
-    
-class QRcode(models.Model):
-    
-    auto_id = models.AutoField(primary_key=True)
-    
+        if d == "Tu":
+            course.tu_class = True
+
+        if d == "W":
+            course.w_class = True
+
+        if d == "Th":
+            course.th_class = True
+
+        if d == "F":
+            course.f_class = True
+
+    course.save()
+
+    return course
+
+
+class QRCode(models.Model):
+    """A qr code is tied to a particular lecture. Note this object just defines the
+    QR code does not contain any image data.
+    """
+
+    # an internal unique id
+    auto_increment_id = models.AutoField(primary_key=True)
+
+    # linked to a course
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    
-    qrcode = models.CharField(max_length=32)
-    
-    def save(self, *args, **kargs):
-        
+
+    # code
+    code = models.CharField(max_length=32)
+
+    # this is a trick to automatically generate a random
+    # string on save
+    def save(self, *args, **kwargs):
         self.code = get_random_string(length=32)
-        super(QRcode, self).save(*args, **kargs)
-        
-def create_qrcode(course):
-    
-    qrcode = QRcode(course=course)
+        super(QRCode, self).save(*args, **kwargs)
+
+
+# this is the functionality to create a qr code
+def create_qr_code(course):
+    qrcode = QRCode(course=course)
     qrcode.save()
-    
     return qrcode
 
+
 class QRCodeUpload(models.Model):
-    
-    auto_id = models.AutoField(primary_key=True)
-    
+    """This model represents a particular qrcode upload from a student."""
+
+    # an internal unique id
+    auto_increment_id = models.AutoField(primary_key=True)
+
+    # linked to a course
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    
-    student = models.ForeignKey(Person, on_delete=models.CASCADE)
-    
-    qr_image = models.ImageField(upload_to ='data')
-    
+
+    # linked to a student
+    student = models.ForeignKey(UniversityPerson, on_delete=models.CASCADE)
+
+    # data
+    image = models.ImageField(upload_to="data")
+
+    # time stamp on upload
     uploaded = models.DateTimeField(auto_now_add=True)
-    
+
+
+# this is the functionality to process an upload
 def process_upload(course, student, image):
     upload = QRCodeUpload(course=course, student=student, image=image)
     upload.save()
     return upload
-    
-    # dates = models.ForeignKey(Lecture, on_delete=models.CASCADE)
-    # student = models.ManyToManyField(HelperCourseStudent, through=HelperCourseStudent)
-    # courses = models.ManyToManyField(HelperCourseStudent, through=HelperCourseStudent)
-    # qrcode = models.ImageField(upload_to='images/')
