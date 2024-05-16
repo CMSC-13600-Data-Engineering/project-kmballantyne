@@ -4,37 +4,40 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-
 <center>
 
-  <h2>AttendanceChimp Dashboard</h2>
+	<h2>AttendanceChip Dashboard</h2>
 
-  <h4>Creator Biographies:</h4>
-  <p>Keegan Ballantyne and Yurou Li are undergraduate students at the University of Chicago.
+	<h4>Creator Biographies:</h4>
+  	<p>Keegan Ballantyne and Yurou Li are undergraduate students at the University of Chicago.
     Keegan is a fourth year double majoring in Biological Sciences and Data Science, and Yurou
     is a third year double majoring in Law, Letters, and Society and Data Science. Keegan likes to
     play videogames as a hobby, and Yurou likes to play the instrument of bells in cathedrals.</p>
   
-  This is my variable: {{my_var}}
-  
-  <br/>
-  {% if user.is_authenticated %}
+  	This is my variable: {{my_var}}
 
-    <h4>Hi <stong>{{ user.username }}!</strong></h4>
+	<br/>
+	{% if user.is_authenticated %}
 
-    <a href="https://localhost:8000/app/course_create">Create a course</a><br/>
-    <a href="https://localhost:8000/app/qr_create">Create a new QR code</a><br/>
-    <a href="https://localhost:8000/app/qr_upload">Upload a QR code</a>
-    <p><br/></p>
-    <a href="{% url 'logout' %}?next=/app/">Logout</a>
+	  <h4>Hi {{ user.username }}!</h4>
 
-  {% else %}
+	  <a href="http://localhost:8000/app/course_create">Create a course</a><br/>
+	  <a href="http://localhost:8000/app/qr_create">Create a new QR code</a> <br/>
+	  <a href="http://localhost:8000/app/qr_upload">Upload a QR code</a>
+	  <p><br/></p>
+	  
+	  <form method="post" action="{% url 'logout' %}">
+    		{% csrf_token %}
+      <button type="submit">logout</button>
+	  </form>
+	
+	{% else %}
 
-    <h4>You are not logged in</h4>
-    <a href="{% url 'login' %}">Log In</a><br/>
-    <a href="{% url 'new' %}">Sign Up</a>
-
-  {% endif %}
+	  <h4>You are not logged in</h4>
+	  <a href="{% url 'login' %}">Log In</a> <br/>
+	  <a href="http://localhost:8000/app/new">Sign Up</a>
+	
+	{% endif %}
 
 </center>
 
