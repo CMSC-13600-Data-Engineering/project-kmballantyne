@@ -9,6 +9,7 @@ the AttendanceChimp app that you can modify for HW5.
 import cv2
 import numpy as np
 from PIL import Image
+from io import BytesIO
 
 # these are django imports
 from django.shortcuts import render
@@ -16,6 +17,8 @@ from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import login
 from django.core.exceptions import PermissionDenied
+from .duplicate_check import check_duplicates
+from .near_duplicate_check import check_near_duplicates
 
 # these are import from your model
 from .models import *
@@ -215,6 +218,10 @@ def course_create_submit(request):
 
     if request.POST.get("day-fri"):
         days.append('F')
+        
+    ##testing purposes
+    if request.POST.get("day-sat"):
+        days.append('SAT')
 
     # create the course and go back home!
     create_course(name, instructor, days, start_time, end_time)
@@ -276,13 +283,18 @@ def qr_upload_submit(request):
     # get the data
     file = request.FILES['imageUpload']
 
-    # image processing
+#changes for hw6: extra credit -> resizing the images to a consistent size
+    
     img = Image.open(file) # load bytes as PIL image
-    cv2img = np.array(img) # load into opencv
+    img_rgba = img.convert("RGB")  # Convert to RGB format
+
+    cv2img = np.array(img_rgba)
+    # Resize image
+    cv2img_resized = cv2.resize(cv2img, (350, 350))
 
     # process image
     qcd = cv2.QRCodeDetector() 
-    retval, decoded_info, points, straight_qrcode = qcd.detectAndDecodeMulti(cv2img)
+    retval, decoded_info, points, straight_qrcode = qcd.detectAndDecodeMulti(cv2img_resized)
 
     if len(decoded_info) == 0:
         return qr_upload(request, "Cannot find a qr code")
@@ -298,7 +310,43 @@ def qr_upload_submit(request):
 
     created_obj = created_obj[0]
 
-    process_upload(created_obj.course, student, file) 
+#new changes added for hw6: extra credit
+
+    #process_upload(created_obj.course, student, file)
+    upload = QRCodeUpload(course=created_obj.course, student=student, image=file)
+    upload.save()
+
+    #check for duplicates and near duplicates after saving the upload
+    check_duplicates()
+    check_near_duplicates()
 
     return render(request, 'app/index.html', {})
+
+#hw5
+
+from django.http import JsonResponse
+from .models import Course, QRCodeUpload, getUploadsForCourse
+
+def getUploads(request):
+    # Check if 'course' parameter exists in the URL arguments
+    course_id = request.GET.get('course')
+    if not course_id:
+        return JsonResponse({'error': 'Course ID is missing'}, status=400)
+
+    # Call the utility function to get uploads for the course
+    uploads = getUploadsForCourse(course_id)
+
+    # Serialize the data
+    serialized_data = [{'username': upload.student.user.username, 'upload_time_as_string': str(upload.uploaded)} for upload in uploads]
+
+    # Return the serialized data as JSON response
+    return JsonResponse(serialized_data, safe=False)
+
+#implementing a logout functionality
+#from django.contrib.auth import logout
+#from django.shortcuts import redirect
+
+#def logout_view(request):
+ #   logout(request)
+  #  return redirect('login')  # Redirect to the login page after logout
 

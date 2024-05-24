@@ -75,6 +75,8 @@ class Course(models.Model):
     w_class = models.BooleanField(default=False)
     th_class = models.BooleanField(default=False)
     f_class = models.BooleanField(default=False)
+    ##testing purposes
+    sat_class = models.BooleanField(default=False)
 
 
 # let's spec out the basic functionality of a course
@@ -98,6 +100,10 @@ def create_course(name, instructor, days, start, end):
 
         if d == "F":
             course.f_class = True
+            
+        ##testing purposes
+        if d == "SAT":
+            course.sat_class = True
 
     course.save()
 
@@ -156,3 +162,57 @@ def process_upload(course, student, image):
     upload = QRCodeUpload(course=course, student=student, image=image)
     upload.save()
     return upload
+
+
+#hw5: adding get uploads for course function
+from datetime import datetime
+
+def getUploadsForCourse(course_id):
+    try:
+        course = Course.objects.get(pk=course_id)
+    except Course.DoesNotExist:
+        return []
+
+    # Get the current date and time
+    current_datetime = datetime.now()
+
+    # Extract the day of the week (short format, e.g., 'Mon', 'Tue', etc.)
+    current_day = current_datetime.strftime("%a").lower()
+
+
+    # Get the uploads for the course
+    uploads = QRCodeUpload.objects.filter(course=course)
+
+    # Filter uploads based on meeting time, day, and valid timeframe
+    valid_uploads = []
+    for upload in uploads:
+        # Check if the upload timestamp falls within the course meeting time
+        if course.class_start <= upload.uploaded.time() <= course.class_end:
+            # Check if the upload day matches one of the course meeting days
+            if current_day == 'mon' and course.m_class:
+                valid_uploads.append(upload)
+            elif current_day == 'tue' and course.tu_class:
+                valid_uploads.append(upload)
+            elif current_day == 'wed' and course.w_class:
+                valid_uploads.append(upload)
+            elif current_day == 'thu' and course.th_class:
+                valid_uploads.append(upload)
+            elif current_day == 'fri' and course.f_class:
+                valid_uploads.append(upload)
+            ####adding this just for testing purposes
+            elif current_day == 'sat' and course.sat_class:
+                valid_uploads.append(upload)
+
+    return valid_uploads
+
+#extra credit hw6: red flag
+
+class RedFlag(models.Model):
+    """this is where images suspected of cheating are stored"""
+    student = models.ForeignKey(UniversityPerson, on_delete=models.CASCADE)
+    image = models.ImageField(upload_to="red_flags")
+    uploaded = models.DateTimeField(auto_now_add=True)
+    reason = models.CharField(max_length=256)
+
+    def __str__(self):
+        return f"RedFlag(student={self.student}, reason={self.reason})"
